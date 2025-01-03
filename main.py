@@ -97,12 +97,27 @@ def start_bot():
 
 @app.route("/stop", methods=["POST"])
 def stop_bot():
-    if not bot_data["running"]:
-        return jsonify({"message": "Bot is not running!"}), 400
-    bot_data["running"] = False
-    with open("bot_data.json", "w") as f:
-        json.dump(bot_data, f, indent=4)
-    return jsonify({"message": "Bot stopped successfully!"})
+    data = request.json
+    bot_name = data.get("bot_name")
+
+    if not bot_name:
+        return jsonify({"message": "Bot name is required to stop the bot!"}), 400
+
+    # Check if the bot exists in the registry
+    bot = bot_registry.get(bot_name)
+    if not bot:
+        return jsonify({"message": f"Bot with name {bot_name} does not exist or is not running!"}), 404
+
+    # Mark the bot as not running
+    bot["data"]["running"] = False
+
+    # Wait for the thread to exit gracefully
+    bot["thread"].join(timeout=5)
+    
+    # Remove the bot from the registry
+    bot_registry.pop(bot_name, None)
+
+    return jsonify({"message": f"Bot {bot_name} has stopped successfully!"})
 
 @app.route("/statuses", methods=["GET"])
 def get_bot_statuses():

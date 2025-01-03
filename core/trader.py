@@ -180,7 +180,7 @@ def trading_loop(bot_name, bot_data):
             if (action != "Hold"): 
                 # Calculate profit/loss in USD
                 total_profit_loss = total_current_value_usd - bot_data["starting_trade_amount"]
-
+                bot_data['total_profit_loss'] = total_profit_loss
             
           
             timestamp = datetime.now().strftime("%d-%m-%Y %I:%M:%S%p")

@@ -24,6 +24,7 @@ bot_data = {
     "total_trades": 0,
     "successful_trades": 0,
     "failed_trades": 0,
+    "total_profit_loss": 0,
     "daily_log": [],
 }
 

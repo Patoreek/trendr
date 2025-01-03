@@ -117,11 +117,11 @@ def get_historical_data(symbol, interval, limit):
     klines = binance_client.get_klines(symbol=symbol, interval=interval, limit=limit)
     return [float(kline[4]) for kline in klines]
 
-def trading_loop():
+def trading_loop(bot_name, bot_data):
     INTERVAL_TO_SECONDS = {
         "1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400,
     }
-    print(f"{COLORS['neutral']} System Update: All systems operational. {COLORS['reset']}")
+    print(f"{COLORS['neutral']} System Update: All systems operational. {bot_name}{COLORS['reset']}")
     total_profit_loss = 0
     
     while bot_data["running"]:

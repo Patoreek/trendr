@@ -2,8 +2,10 @@ from decimal import Decimal
 from core.utils import get_notional_limit, get_quantity_precision, adjust_quantity, colorize_cli_text
 from strategies.ema_strategy import calculate_ema
 from config.bot_config import bot_data, binance_client, COLORS
+from core.logger import start_logger, lprint
 import time
 from datetime import datetime
+import asyncio
 
 def buy_crypto(symbol, available_amount):
     try:
@@ -57,7 +59,8 @@ def buy_crypto(symbol, available_amount):
         
         return order
     except Exception as e:
-        print(f"Error placing buy order: {e}")
+        lprint(bot_data["logger"], f"Error placing buy order: {e}")
+        # print(f"Error placing buy order: {e}")
         bot_data["failed_trades"] += 1
         return False
 
@@ -109,7 +112,8 @@ def sell_crypto(symbol, available_quantity):
         return order
         # return order
     except Exception as e:
-        print(f"Error placing sell order: {e}")
+        lprint(bot_data["logger"], f"Error placing sell order: {e}")
+        # print(f"Error placing sell order: {e}")
         bot_data["failed_trades"] += 1
         return False
     
@@ -124,6 +128,10 @@ def trading_loop(bot_name, bot_data):
     print(f"{COLORS['neutral']} System Update: All systems operational. {bot_name}{COLORS['reset']}")
     total_profit_loss = 0
     
+     # Start the logger
+    # asyncio.run(start_logger(bot_name, bot_data))
+    logger = start_logger(bot_name)
+    
     while bot_data["running"]:
         try:
             symbol = bot_data["symbol"]
@@ -133,8 +141,8 @@ def trading_loop(bot_name, bot_data):
             short_ema = calculate_ema(prices, window=5)
             long_ema = calculate_ema(prices, window=20)
             color_option = 'loss' if total_profit_loss < 0 else 'profit'
-            print(f"{COLORS['neutral']} Starting Trade | {symbol} | {interval} |{COLORS['reset']} Profit/Loss: {colorize_cli_text(bot_data['fiat_stablecoin'])}: {colorize_cli_text(f"{total_profit_loss:.8f}", color_option)} {COLORS['reset']}")
-            print(f"""
+            lprint(logger, f"{COLORS['neutral']} Starting Trade | {symbol} | {interval} |{COLORS['reset']} Profit/Loss: {colorize_cli_text(bot_data['fiat_stablecoin'])}: {colorize_cli_text(f"{total_profit_loss:.8f}", color_option)} {COLORS['reset']}")
+            lprint(logger, f"""
                   {bot_data['base_currency']}: {bot_data["base_current_currency_quantity"]}
                   {bot_data['quote_currency']}: {bot_data["quote_current_currency_quantity"]}
                   S-EMA: {short_ema}
@@ -142,6 +150,15 @@ def trading_loop(bot_name, bot_data):
                   Should Buy? {short_ema > long_ema}
                   Should Sell? {short_ema < long_ema}
                   """)
+            # print(f"{COLORS['neutral']} Starting Trade | {symbol} | {interval} |{COLORS['reset']} Profit/Loss: {colorize_cli_text(bot_data['fiat_stablecoin'])}: {colorize_cli_text(f"{total_profit_loss:.8f}", color_option)} {COLORS['reset']}")
+            # print(f"""
+            #       {bot_data['base_currency']}: {bot_data["base_current_currency_quantity"]}
+            #       {bot_data['quote_currency']}: {bot_data["quote_current_currency_quantity"]}
+            #       S-EMA: {short_ema}
+            #       L-EMA: {long_ema}
+            #       Should Buy? {short_ema > long_ema}
+            #       Should Sell? {short_ema < long_ema}
+            #       """)
             if bot_data["base_current_currency_quantity"] > 0 and short_ema > long_ema and bot_data["quote_current_currency_quantity"] > 0:
                 action = "Buy"
                 color = COLORS['buy']
@@ -163,7 +180,8 @@ def trading_loop(bot_name, bot_data):
                     
                 action = "Hold"
                 color = COLORS['error']
-                print(f"{color}{hold_msg}{COLORS['reset']}")
+                lprint(logger,f"{color}{hold_msg}{COLORS['reset']}")
+                # print(f"{color}{hold_msg}{COLORS['reset']}")
                 color = COLORS['hold']
 
             
@@ -184,8 +202,10 @@ def trading_loop(bot_name, bot_data):
             
           
             timestamp = datetime.now().strftime("%d-%m-%Y %I:%M:%S%p")
-            print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | S-EMA: {short_ema:.6f} | L-EMA: {long_ema:.6f} | Total: {bot_data['fiat_stablecoin']}{total_current_value_usd}{COLORS['reset']}")
-            print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | Start {bot_data['base_currency']}: {bot_data['base_starting_currency_quantity']:.8f} | {bot_data['base_currency']}: {bot_data['base_current_currency_quantity']:.8f} | {bot_data['quote_currency']}: {bot_data['quote_current_currency_quantity']:.8f} | Total Profit/Loss: {bot_data['fiat_stablecoin']}{total_profit_loss:.8f}{COLORS['reset']}")
+            lprint(logger, f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | S-EMA: {short_ema:.6f} | L-EMA: {long_ema:.6f} | Total: {bot_data['fiat_stablecoin']}{total_current_value_usd}{COLORS['reset']}")
+            lprint(logger, f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | Start {bot_data['base_currency']}: {bot_data['base_starting_currency_quantity']:.8f} | {bot_data['base_currency']}: {bot_data['base_current_currency_quantity']:.8f} | {bot_data['quote_currency']}: {bot_data['quote_current_currency_quantity']:.8f} | Total Profit/Loss: {bot_data['fiat_stablecoin']}{total_profit_loss:.8f}{COLORS['reset']}")
+            # print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | S-EMA: {short_ema:.6f} | L-EMA: {long_ema:.6f} | Total: {bot_data['fiat_stablecoin']}{total_current_value_usd}{COLORS['reset']}")
+            # print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | Start {bot_data['base_currency']}: {bot_data['base_starting_currency_quantity']:.8f} | {bot_data['base_currency']}: {bot_data['base_current_currency_quantity']:.8f} | {bot_data['quote_currency']}: {bot_data['quote_current_currency_quantity']:.8f} | Total Profit/Loss: {bot_data['fiat_stablecoin']}{total_profit_loss:.8f}{COLORS['reset']}")
 
             # Update previous market price for next iteration
             bot_data["previous_market_price"] = current_market_price

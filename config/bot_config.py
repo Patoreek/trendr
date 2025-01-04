@@ -26,6 +26,8 @@ bot_data = {
     "failed_trades": 0,
     "total_profit_loss": 0,
     "daily_log": [],
+    "logger": [],
+    "logger_thread": [],
 }
 
 # Initialize Binance client

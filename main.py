@@ -5,6 +5,8 @@ from core.utils import split_market_pair, adjust_quantity, get_quantity_precisio
 from decimal import Decimal, getcontext
 import json
 import threading
+from core.logger import stop_logger
+
 
 app = Flask(__name__)
 
@@ -107,7 +109,10 @@ def stop_bot():
     bot = bot_registry.get(bot_name)
     if not bot:
         return jsonify({"message": f"Bot with name {bot_name} does not exist or is not running!"}), 404
-
+    
+    logger = bot["data"].get("logger")
+    if logger and logger.connection_successful:  # Only stop the logger if the connection was successful
+        stop_logger(bot["data"])
     # Mark the bot as not running
     bot["data"]["running"] = False
 
@@ -121,12 +126,15 @@ def stop_bot():
 
 @app.route("/statuses", methods=["GET"])
 def get_bot_statuses():
-     # Prepare a list of all currently running bots
+    # Prepare a list of all currently running bots, excluding non-serializable fields
     running_bots = [
-        {"bot_name": bot_name, "bot_data": bot["data"]}
+        {
+            "bot_name": bot_name,
+            "bot_data": {key: value for key, value in bot["data"].items() if key not in ["logger", "logger_thread"]}
+        }
         for bot_name, bot in bot_registry.items()
     ]
-
+    
     # Return the list as a JSON response
     return jsonify({"running_bots": running_bots}), 200
 

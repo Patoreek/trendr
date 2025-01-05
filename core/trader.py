@@ -130,19 +130,26 @@ def trading_loop(bot_name, bot_data):
     total_profit_loss = 0
     
     # Create Bot trading window deadline
+    bot_data['start_trade_time'] = get_current_datetime()
     if isinstance(bot_data['trade_window'], str):
-        bot_data['trade_window'] = parse_trade_window(bot_data['trade_window'])
-    bot_data['end_trade_time'] = get_current_datetime() + bot_data['trade_window']
+        if bot_data['trade_window'] != "infinite":
+            bot_data['trade_window'] = parse_trade_window(bot_data['trade_window'])
+    if bot_data['trade_window'] != "infinite":
+        bot_data['end_trade_time'] = get_current_datetime() + bot_data['trade_window']
+        
+        
     # Start the logger
     logger = start_logger(bot_name)
     
     while bot_data["running"]:
-        if get_current_datetime() >= bot_data['end_trade_time']:
+        if bot_data['end_trade_time'] and get_current_datetime() >= bot_data['end_trade_time']:
+            message = f"⏰ Trade window for bot {bot_name} has ended."
             message_data = create_message_data(
-                message=f"⏰ Trade window for bot {bot_name} has ended.",
+                message=message,
                 status="notify"
             )
             wsprint(logger, message_data)
+            print(message)
             # Optionally log final stats or perform cleanup here
             break
         

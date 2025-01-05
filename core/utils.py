@@ -51,6 +51,7 @@ def colorize_cli_text(text, color=None):
 
 def parse_trade_window(trade_window):
         trade_window_map = {
+            "infinite": "infinite",
             "1m": timedelta(minutes=1),
             "5m": timedelta(minutes=5),
             "10m": timedelta(minutes=10),

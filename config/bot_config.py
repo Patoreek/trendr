@@ -13,6 +13,7 @@ bot_data = {
     "quote_currency": '',
     "interval": "",
     "trade_allocation": 0,
+    "trade_window": "",
     "starting_trade_amount": Decimal('100.0'),
     "current_trade_amount": Decimal('100.0'),
     "base_starting_currency_quantity": Decimal('0.0'),
@@ -59,6 +60,9 @@ COLOR_BNB = "\033[38;5;220m"  # BNB - text-yellow-500
 COLOR_DOGE = "\033[38;5;220m" # DOGE - text-yellow-400
 COLOR_MATIC = "\033[38;5;93m" # MATIC - text-purple-500
 COLOR_USDT = "\033[38;5;34m"  # USDT - text-green-500
+COLOR_XMR = "\033[38;5;168m"  # XMR - text-orange-600
+COLOR_BCH = "\033[38;5;208m"  # BCH - text-orange-400
+COLOR_EOS = "\033[38;5;51m"   # EOS - text-blue-700
 
 # Other colors
 COLOR_BOTNAME = "\033[48;5;129m\033[97m"  # botname - bg-purple-700 text-white
@@ -91,9 +95,12 @@ COLORS = {
     "BNB": COLOR_BNB,                       # BNB - Binance Coin
     "DOGE": COLOR_DOGE,                     # DOGE - Dogecoin
     "MATIC": COLOR_MATIC,                   # MATIC - Polygon
-    "USDT": COLOR_USDT                      # USDT - Tether
+    "USDT": COLOR_USDT,                     # USDT - Tether
+    "XMR": COLOR_XMR,                       # XMR - Monero
+    "BCH": COLOR_BCH,                       # BCH - Bitcoin Cash
+    "EOS": COLOR_EOS                        # EOS - EOS
 }
 
 known_currencies = {
-    'BTC', 'ETH', 'XRP', 'ADA', 'SOL', 'LTC', 'BNB', 'DOGE', 'MATIC', 'USDT'
+    'BTC', 'ETH', 'XRP', 'ADA', 'SOL', 'LTC', 'BNB', 'DOGE', 'MATIC', 'USDT', 'XMR', 'BCH', 'EOS'
 }

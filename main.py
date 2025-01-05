@@ -1,11 +1,12 @@
 from flask import Flask, jsonify, request
 from core.trader import trading_loop
 from config.bot_config import bot_data, binance_client
-from core.utils import split_market_pair, adjust_quantity, get_quantity_precision, get_notional_limit, colorize_cli_text
+from core.utils import split_market_pair, adjust_quantity, get_quantity_precision, get_notional_limit, colorize_cli_text, parse_trade_window
 from decimal import Decimal, getcontext
 import json
 import threading
 from core.logger import stop_logger
+from datetime import timedelta
 
 
 app = Flask(__name__)
@@ -36,7 +37,9 @@ def start_bot():
     for bot_name, bot in bot_registry.items():
         if (
             bot["data"]["symbol"] == bot_data_instance["symbol"] and
-            bot["data"]["interval"] == bot_data_instance["interval"]
+            bot["data"]["interval"] == bot_data_instance["interval"] and
+            bot["data"]["starting_trade_amount"] == bot_data_instance["starting_trade_amount"] and
+            bot["data"]["trade_allocation"] == bot_data_instance["trade_allocation"]
         ):
             return jsonify({
                 "message": f"A bot ({bot_name}) for {bot_data_instance['symbol']} with interval {bot_data_instance['interval']} is already running!",
@@ -45,7 +48,7 @@ def start_bot():
             }), 400
 
     # Create unique bot name for user listing
-    bot_name = f"bot-{len(bot_registry)+1:03d}-{bot_data_instance['symbol']}-{bot_data_instance['interval']}"
+    bot_name = f"bot-{len(bot_registry)+1:03d}-{bot_data_instance['symbol']}-{bot_data_instance['interval']}-S:{bot_data_instance["starting_trade_amount"]}-{bot_data_instance["trade_allocation"]}%"
 
     # Fetch price and calculate initial quantity
     current_price = Decimal(binance_client.get_symbol_ticker(symbol=bot_data_instance["symbol"])["price"])
@@ -78,6 +81,9 @@ def start_bot():
     bot_data_instance["previous_market_price"] = current_price
 
     bot_data_instance["running"] = True
+    
+    trade_window = data.get('trade_window')
+    bot_data_instance["trade_window"] = parse_trade_window(trade_window)    
     
     # Thread target function
     def bot_thread(bot_name, bot_data_instance):
@@ -127,13 +133,22 @@ def stop_bot():
 @app.route("/statuses", methods=["GET"])
 def get_bot_statuses():
     # Prepare a list of all currently running bots, excluding non-serializable fields
-    running_bots = [
-        {
+    running_bots = []
+    for bot_name, bot in bot_registry.items():
+        bot_data_serializable = {}
+        for key, value in bot["data"].items():
+            if key in ["logger", "logger_thread"]:
+                continue  # Exclude non-serializable fields
+            if isinstance(value, timedelta):
+                # Convert timedelta to a string or total seconds
+                bot_data_serializable[key] = str(value)  # e.g., "4:00:00" for 4 hours
+            else:
+                bot_data_serializable[key] = value
+        
+        running_bots.append({
             "bot_name": bot_name,
-            "bot_data": {key: value for key, value in bot["data"].items() if key not in ["logger", "logger_thread"]}
-        }
-        for bot_name, bot in bot_registry.items()
-    ]
+            "bot_data": bot_data_serializable
+        })
     
     # Return the list as a JSON response
     return jsonify({"running_bots": running_bots}), 200

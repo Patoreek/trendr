@@ -1,11 +1,10 @@
 from decimal import Decimal
-from core.utils import get_notional_limit, get_quantity_precision, adjust_quantity, colorize_cli_text
+from core.utils import get_notional_limit, get_quantity_precision, adjust_quantity, colorize_cli_text, parse_trade_window
 from strategies.ema_strategy import calculate_ema
 from config.bot_config import bot_data, binance_client, COLORS
 from core.logger import start_logger, lprint
 import time
 from datetime import datetime
-import asyncio
 
 def buy_crypto(symbol, available_amount):
     try:
@@ -128,11 +127,19 @@ def trading_loop(bot_name, bot_data):
     print(f"{COLORS['neutral']} System Update: All systems operational. {bot_name}{COLORS['reset']}")
     total_profit_loss = 0
     
-     # Start the logger
-    # asyncio.run(start_logger(bot_name, bot_data))
+    # Create Bot trading window deadline
+    if isinstance(bot_data['trade_window'], str):
+        bot_data['trade_window'] = parse_trade_window(bot_data['trade_window'])
+    end_time = datetime.now() + bot_data['trade_window']
+    # Start the logger
     logger = start_logger(bot_name)
     
     while bot_data["running"]:
+        if datetime.now() >= end_time:
+            print(f"⏰ Trade window for bot {bot_name} has ended.")
+            # Optionally log final stats or perform cleanup here
+            break
+        
         try:
             symbol = bot_data["symbol"]
             interval = bot_data["interval"]

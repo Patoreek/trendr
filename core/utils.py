@@ -1,6 +1,8 @@
 import numpy as np
 from config.bot_config import known_currencies, binance_client, COLORS
 from decimal import Decimal
+from datetime import timedelta
+
 
 def split_market_pair(market_pair):
     for i in range(3, len(market_pair) + 1):
@@ -45,3 +47,22 @@ def colorize_cli_text(text, color=None):
     
     # Return text as is if no color is found
     return f"{text}"
+
+def parse_trade_window(trade_window):
+        trade_window_map = {
+            "1m": timedelta(minutes=1),
+            "5m": timedelta(minutes=5),
+            "10m": timedelta(minutes=10),
+            "15m": timedelta(minutes=15),
+            "30m": timedelta(minutes=30),
+            "45m": timedelta(minutes=45),
+            "1hr": timedelta(hours=1),
+            "2hr": timedelta(hours=2),
+            "4hr": timedelta(hours=4),
+            "6hr": timedelta(hours=6),
+            "8hr": timedelta(hours=8),
+            "10hr": timedelta(hours=10),
+            "12hr": timedelta(hours=12),
+            "24hr": timedelta(hours=24),
+        }
+        return trade_window_map.get(trade_window, None)

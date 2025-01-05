@@ -1,7 +1,8 @@
 import numpy as np
 from config.bot_config import known_currencies, binance_client, COLORS
 from decimal import Decimal
-from datetime import timedelta
+from datetime import datetime, timedelta
+import pytz
 
 
 def split_market_pair(market_pair):
@@ -66,3 +67,7 @@ def parse_trade_window(trade_window):
             "24hr": timedelta(hours=24),
         }
         return trade_window_map.get(trade_window, None)
+    
+def get_current_datetime():
+    sydney_tz = pytz.timezone('Australia/Sydney')
+    return datetime.now(sydney_tz)

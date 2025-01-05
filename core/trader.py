@@ -1,10 +1,12 @@
 from decimal import Decimal
-from core.utils import get_notional_limit, get_quantity_precision, adjust_quantity, colorize_cli_text, parse_trade_window
+from core.utils import get_notional_limit, get_quantity_precision, adjust_quantity, colorize_cli_text, parse_trade_window, get_current_datetime
 from strategies.ema_strategy import calculate_ema
 from config.bot_config import bot_data, binance_client, COLORS
-from core.logger import start_logger, lprint
+from core.logger import start_logger, wsprint, create_message_data
 import time
 from datetime import datetime
+import pytz
+sydney_tz = pytz.timezone('Australia/Sydney')
 
 def buy_crypto(symbol, available_amount):
     try:
@@ -58,7 +60,7 @@ def buy_crypto(symbol, available_amount):
         
         return order
     except Exception as e:
-        lprint(bot_data["logger"], f"Error placing buy order: {e}")
+        print(f"Error placing buy order: {e}")
         # print(f"Error placing buy order: {e}")
         bot_data["failed_trades"] += 1
         return False
@@ -111,7 +113,7 @@ def sell_crypto(symbol, available_quantity):
         return order
         # return order
     except Exception as e:
-        lprint(bot_data["logger"], f"Error placing sell order: {e}")
+        print(f"Error placing sell order: {e}")
         # print(f"Error placing sell order: {e}")
         bot_data["failed_trades"] += 1
         return False
@@ -130,13 +132,17 @@ def trading_loop(bot_name, bot_data):
     # Create Bot trading window deadline
     if isinstance(bot_data['trade_window'], str):
         bot_data['trade_window'] = parse_trade_window(bot_data['trade_window'])
-    end_time = datetime.now() + bot_data['trade_window']
+    bot_data['end_trade_time'] = get_current_datetime() + bot_data['trade_window']
     # Start the logger
     logger = start_logger(bot_name)
     
     while bot_data["running"]:
-        if datetime.now() >= end_time:
-            print(f"⏰ Trade window for bot {bot_name} has ended.")
+        if get_current_datetime() >= bot_data['end_trade_time']:
+            message_data = create_message_data(
+                message=f"⏰ Trade window for bot {bot_name} has ended.",
+                status="notify"
+            )
+            wsprint(logger, message_data)
             # Optionally log final stats or perform cleanup here
             break
         
@@ -148,24 +154,7 @@ def trading_loop(bot_name, bot_data):
             short_ema = calculate_ema(prices, window=5)
             long_ema = calculate_ema(prices, window=20)
             color_option = 'loss' if total_profit_loss < 0 else 'profit'
-            lprint(logger, f"{COLORS['neutral']} Starting Trade | {symbol} | {interval} |{COLORS['reset']} Profit/Loss: {colorize_cli_text(bot_data['fiat_stablecoin'])}: {colorize_cli_text(f"{total_profit_loss:.8f}", color_option)} {COLORS['reset']}")
-            lprint(logger, f"""
-                  {bot_data['base_currency']}: {bot_data["base_current_currency_quantity"]}
-                  {bot_data['quote_currency']}: {bot_data["quote_current_currency_quantity"]}
-                  S-EMA: {short_ema}
-                  L-EMA: {long_ema}
-                  Should Buy? {short_ema > long_ema}
-                  Should Sell? {short_ema < long_ema}
-                  """)
-            # print(f"{COLORS['neutral']} Starting Trade | {symbol} | {interval} |{COLORS['reset']} Profit/Loss: {colorize_cli_text(bot_data['fiat_stablecoin'])}: {colorize_cli_text(f"{total_profit_loss:.8f}", color_option)} {COLORS['reset']}")
-            # print(f"""
-            #       {bot_data['base_currency']}: {bot_data["base_current_currency_quantity"]}
-            #       {bot_data['quote_currency']}: {bot_data["quote_current_currency_quantity"]}
-            #       S-EMA: {short_ema}
-            #       L-EMA: {long_ema}
-            #       Should Buy? {short_ema > long_ema}
-            #       Should Sell? {short_ema < long_ema}
-            #       """)
+            print(f"{COLORS['neutral']} Starting Trade | {symbol} | {interval} |{COLORS['reset']} Profit/Loss: {colorize_cli_text(bot_data['fiat_stablecoin'])}: {colorize_cli_text(f"{total_profit_loss:.8f}", color_option)} {COLORS['reset']}")
             if bot_data["base_current_currency_quantity"] > 0 and short_ema > long_ema and bot_data["quote_current_currency_quantity"] > 0:
                 action = "Buy"
                 color = COLORS['buy']
@@ -187,8 +176,7 @@ def trading_loop(bot_name, bot_data):
                     
                 action = "Hold"
                 color = COLORS['error']
-                lprint(logger,f"{color}{hold_msg}{COLORS['reset']}")
-                # print(f"{color}{hold_msg}{COLORS['reset']}")
+                print(f"{color}{hold_msg}{COLORS['reset']}")
                 color = COLORS['hold']
 
             
@@ -208,14 +196,19 @@ def trading_loop(bot_name, bot_data):
                 bot_data['total_profit_loss'] = total_profit_loss
             
           
-            timestamp = datetime.now().strftime("%d-%m-%Y %I:%M:%S%p")
-            lprint(logger, f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | S-EMA: {short_ema:.6f} | L-EMA: {long_ema:.6f} | Total: {bot_data['fiat_stablecoin']}{total_current_value_usd}{COLORS['reset']}")
-            lprint(logger, f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | Start {bot_data['base_currency']}: {bot_data['base_starting_currency_quantity']:.8f} | {bot_data['base_currency']}: {bot_data['base_current_currency_quantity']:.8f} | {bot_data['quote_currency']}: {bot_data['quote_current_currency_quantity']:.8f} | Total Profit/Loss: {bot_data['fiat_stablecoin']}{total_profit_loss:.8f}{COLORS['reset']}")
-            # print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | S-EMA: {short_ema:.6f} | L-EMA: {long_ema:.6f} | Total: {bot_data['fiat_stablecoin']}{total_current_value_usd}{COLORS['reset']}")
-            # print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | Start {bot_data['base_currency']}: {bot_data['base_starting_currency_quantity']:.8f} | {bot_data['base_currency']}: {bot_data['base_current_currency_quantity']:.8f} | {bot_data['quote_currency']}: {bot_data['quote_current_currency_quantity']:.8f} | Total Profit/Loss: {bot_data['fiat_stablecoin']}{total_profit_loss:.8f}{COLORS['reset']}")
-
+            timestamp = get_current_datetime().strftime("%d-%m-%Y %I:%M:%S%p")
+            print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | S-EMA: {short_ema:.6f} | L-EMA: {long_ema:.6f} | Total: {bot_data['fiat_stablecoin']}{total_current_value_usd}{COLORS['reset']}")
+            print(f"{color}{timestamp} | [{action.upper()}] | {symbol} | {interval} | Start {bot_data['base_currency']}: {bot_data['base_starting_currency_quantity']:.8f} | {bot_data['base_currency']}: {bot_data['base_current_currency_quantity']:.8f} | {bot_data['quote_currency']}: {bot_data['quote_current_currency_quantity']:.8f} | Total Profit/Loss: {bot_data['fiat_stablecoin']}{total_profit_loss:.8f}{COLORS['reset']}")
+            
             # Update previous market price for next iteration
             bot_data["previous_market_price"] = current_market_price
+            
+            message_data = create_message_data(
+                message=f"[STORE] {bot_name} data",
+                status="log",
+                data=bot_data
+            )
+            wsprint(logger, message_data)
 
         except Exception as e:
             print(f"Error in trading loop: {e}")

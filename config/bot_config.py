@@ -14,6 +14,7 @@ bot_data = {
     "interval": "",
     "trade_allocation": 0,
     "trade_window": "",
+    "end_trade_time": "",
     "starting_trade_amount": Decimal('100.0'),
     "current_trade_amount": Decimal('100.0'),
     "base_starting_currency_quantity": Decimal('0.0'),

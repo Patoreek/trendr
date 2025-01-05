@@ -1,12 +1,11 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from core.trader import trading_loop
 from config.bot_config import bot_data, binance_client
 from core.utils import split_market_pair, adjust_quantity, get_quantity_precision, get_notional_limit, colorize_cli_text, parse_trade_window
 from decimal import Decimal, getcontext
 import json
 import threading
-from core.logger import stop_logger
-from datetime import timedelta
+from core.logger import stop_logger, CustomJSONEncoder
 
 
 app = Flask(__name__)
@@ -132,26 +131,22 @@ def stop_bot():
 
 @app.route("/statuses", methods=["GET"])
 def get_bot_statuses():
-    # Prepare a list of all currently running bots, excluding non-serializable fields
+    # Prepare a list of all currently running bots
     running_bots = []
     for bot_name, bot in bot_registry.items():
-        bot_data_serializable = {}
-        for key, value in bot["data"].items():
-            if key in ["logger", "logger_thread"]:
-                continue  # Exclude non-serializable fields
-            if isinstance(value, timedelta):
-                # Convert timedelta to a string or total seconds
-                bot_data_serializable[key] = str(value)  # e.g., "4:00:00" for 4 hours
-            else:
-                bot_data_serializable[key] = value
-        
+        bot_data_serializable = {
+            key: value for key, value in bot["data"].items()
+            if key not in ["logger", "logger_thread"]  # Exclude non-serializable fields
+        }
         running_bots.append({
             "bot_name": bot_name,
             "bot_data": bot_data_serializable
         })
     
-    # Return the list as a JSON response
-    return jsonify({"running_bots": running_bots}), 200
+    # Serialize using CustomJSONEncoder
+    response_data = {"running_bots": running_bots}
+    response_json = json.dumps(response_data, cls=CustomJSONEncoder)
+    return Response(response_json, content_type="application/json", status=200)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5001)

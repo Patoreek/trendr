@@ -1,52 +1,53 @@
 from decimal import Decimal
 from core.utils import get_notional_limit, get_quantity_precision, adjust_quantity, colorize_cli_text, parse_trade_window, get_current_datetime
 from strategies.ema_strategy import calculate_ema
-from config.bot_config import bot_data, binance_client, COLORS
+from config.bot_config import binance_client, COLORS
 from core.logger import start_logger, wsprint, create_message_data
 import time
 from datetime import datetime
 import pytz
 sydney_tz = pytz.timezone('Australia/Sydney')
 
-def buy_crypto(symbol, available_amount):
+def buy_crypto(symbol, bot_data):
     try:
         min_notional = get_notional_limit(symbol)
         price = Decimal(binance_client.get_symbol_ticker(symbol=symbol)["price"])
         min_qty, step_size = get_quantity_precision(symbol)
         
-        # Use trade allocation to determine amount to spend
-        trade_amount = Decimal(bot_data["current_trade_amount"]) * (Decimal(bot_data["trade_allocation"]) / Decimal('100.0'))
+        # Calculate trade amount using quote_current_currency_quantity
+        trade_amount = Decimal(bot_data["quote_current_currency_quantity"]) * (Decimal(bot_data["trade_allocation"]) / Decimal('100.0'))
         quantity = trade_amount / price
         adjusted_quantity = adjust_quantity(quantity, min_qty, step_size)
+        
+        # Ensure adjusted quantity meets minimum notional value
+        if adjusted_quantity * price < min_notional:
+            adjusted_quantity = min_notional / price
+            adjusted_quantity = adjust_quantity(adjusted_quantity, min_qty, step_size)
+        
         required_quote_balance = adjusted_quantity * price
         
-        # Check conditions and raise errors with colors
+        # Check for sufficient quote balance
         if bot_data["quote_current_currency_quantity"] < required_quote_balance:
             raise ValueError(
                 f"{COLORS['error']}Insufficient {bot_data['quote_currency']} balance: required {required_quote_balance}, available {bot_data['quote_current_currency_quantity']}{COLORS['reset']}"
             )
-
-        # Check if the trade amount meets the minimum notional value
-        if adjusted_quantity * price < min_notional:
-            raise ValueError(
-                f"{COLORS['error']}Trade amount {adjusted_quantity * price} is below minimum notional {min_notional}{COLORS['reset']}"
-            )
-
+        
+        # Place market buy order
         order = binance_client.order_market_buy(symbol=symbol, quantity=f"{adjusted_quantity:.8f}")
-                
-        # # Assuming fee rate is known or can be fetched, here's an example:
-        fee_rate = Decimal('0.001')  # Example rate, adjust based on actual fees
+        
+        # Calculate fees and update bot_data
+        fee_rate = Decimal('0.001')  # Example fee rate
         total_cost = adjusted_quantity * price
         fee = total_cost * fee_rate
         net_cost = total_cost + fee
         
-        # Update bot_data after the buy
         bot_data["current_trade_amount"] -= net_cost
         bot_data["base_current_currency_quantity"] += adjusted_quantity
         bot_data["quote_current_currency_quantity"] -= total_cost
         
+        print(f'BUYING {bot_data["base_currency"]} WITH {bot_data["quote_currency"]}')
         bot_data["successful_trades"] += 1
-        
+        bot_data["total_trades"] += 1
         bot_data["daily_log"].append({
             "action": "Buy",
             "symbol": symbol,
@@ -61,11 +62,11 @@ def buy_crypto(symbol, available_amount):
         return order
     except Exception as e:
         print(f"Error placing buy order: {e}")
-        # print(f"Error placing buy order: {e}")
         bot_data["failed_trades"] += 1
+        bot_data["total_trades"] += 1
         return False
-
-def sell_crypto(symbol, available_quantity):
+    
+def sell_crypto(symbol, bot_data):
     try:
         min_notional = get_notional_limit(symbol)
         price = Decimal(binance_client.get_symbol_ticker(symbol=symbol)["price"])
@@ -73,9 +74,9 @@ def sell_crypto(symbol, available_quantity):
 
         # Use trade allocation to determine quantity to sell
         trade_amount = Decimal(bot_data["current_trade_amount"]) * (Decimal(bot_data["trade_allocation"]) / Decimal('100.0'))
-        quantity = min(trade_amount / price, available_quantity)  # Sell only what we have
+        quantity = min(trade_amount / price, bot_data["base_current_currency_quantity"])  # Sell only what we have
         adjusted_quantity = adjust_quantity(quantity, min_qty, step_size)
-        
+         
         if bot_data["base_current_currency_quantity"] < adjusted_quantity:
             raise ValueError(f"Insufficient base currency balance: required {adjusted_quantity}, available {bot_data['base_current_currency_quantity']}")
             return false
@@ -98,7 +99,9 @@ def sell_crypto(symbol, available_quantity):
 
         bot_data["base_current_currency_quantity"] = max(Decimal('0.0'), bot_data["base_current_currency_quantity"])
 
+        print(f'SELLING {bot_data["base_currency"]} FOR {bot_data["quote_currency"]}')
         bot_data["successful_trades"] += 1
+        bot_data["total_trades"] += 1
 
         bot_data["daily_log"].append({
             "action": "Sell",
@@ -116,6 +119,7 @@ def sell_crypto(symbol, available_quantity):
         print(f"Error placing sell order: {e}")
         # print(f"Error placing sell order: {e}")
         bot_data["failed_trades"] += 1
+        bot_data["total_trades"] += 1
         return False
     
 def get_historical_data(symbol, interval, limit):
@@ -165,13 +169,11 @@ def trading_loop(bot_name, bot_data):
             if bot_data["base_current_currency_quantity"] > 0 and short_ema > long_ema and bot_data["quote_current_currency_quantity"] > 0:
                 action = "Buy"
                 color = COLORS['buy']
-                available_amount = bot_data["current_trade_amount"]
-                order = buy_crypto(symbol, available_amount)
+                order = buy_crypto(symbol, bot_data)
             elif bot_data["base_current_currency_quantity"] > 0 and short_ema < long_ema:
                 action = "Sell"
                 color = COLORS['sell']
-                available_quantity = bot_data["base_current_currency_quantity"]
-                order = sell_crypto(symbol, available_quantity)
+                order = sell_crypto(symbol, bot_data)
             else:
                 # Determine why the bot is holding
                 if bot_data["base_current_currency_quantity"] <= 0 and short_ema < long_ema:
@@ -187,7 +189,9 @@ def trading_loop(bot_name, bot_data):
                 color = COLORS['hold']
 
             
-            
+            print('---------------')
+            print(bot_data)
+            print('---------------')
             # Profit/Loss Calculation
             current_market_price = Decimal(prices[-1])
             # Convert base currency to USD

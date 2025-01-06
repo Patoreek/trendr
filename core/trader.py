@@ -420,38 +420,38 @@ def trading_loop(bot_name, bot_data):
             stop_trading = loss_limiter(bot_data, symbol)
             if stop_trading: break
             
+            #!REMOVE THIS AFTER TESTING
+            preventChecks=False
+            if not preventChecks:
             # calculate_atr             >> Avoid trading during highly volatile markets by using metrics like Average True Range (ATR) or Bollinger Bands.
-            atr_series = calculate_atr(symbol, interval, limit=50, window=14) # Common default for ATR calculation is 14. Adjust this depending on your strategy and market conditions.
-            # print(f"atr_series: {atr_series}")
-            # Extract the most recent ATR value
-            atr = atr_series.iloc[-1]  # Get the last value in the Series
-            print(f"Most recent ATR: {atr}")
-            atr_ok, atr_message = atr_filter(atr)
-            print(atr_message)  # Log the decision
-            if not atr_ok:
-                time.sleep(wait_time)  # Wait for the specified amount of time
-                continue  # Skip to the next iteration
-            
-            
-            
-            
-            # Risk/Reward Ratio         >> 2:1 Currently Reward outweights risk 2:1
-            # is_rewarding = risk_reward_ratio(prices, short_ema, long_ema, atr)
-            # print(f"[is_rewarding] Trade decision: {'Proceed' if is_rewarding else 'Skip'}")
-            # if not is_rewarding:
-            #     print("The trade is not rewarding based on risk/reward ratio. Not proceeding.")
-            #     time.sleep(wait_time)  # Wait for the specified amount of time
-            #     continue  # Skip to the next iteration
-            
-            # Dynamic Trade Allocation  >> size of trade changes on strong or weak trends accordingly.
-            bot_data['dynamic_trade_allocation'] = dynamic_trade_allocation(bot_data, short_ema, long_ema, atr)
+                atr_series = calculate_atr(symbol, interval, limit=50, window=14) # Common default for ATR calculation is 14. Adjust this depending on your strategy and market conditions.
+                # print(f"atr_series: {atr_series}")
+                # Extract the most recent ATR value
+                atr = atr_series.iloc[-1]  # Get the last value in the Series
+                print(f"Most recent ATR: {atr}")
+                atr_ok, atr_message = atr_filter(atr)
+                print(atr_message)  # Log the decision
+                if not atr_ok:
+                    time.sleep(wait_time)  # Wait for the specified amount of time
+                    continue  # Skip to the next iteration
+                
+                # Risk/Reward Ratio         >> 2:1 Currently Reward outweights risk 2:1
+                # is_rewarding = risk_reward_ratio(prices, short_ema, long_ema, atr)
+                # print(f"[is_rewarding] Trade decision: {'Proceed' if is_rewarding else 'Skip'}")
+                # if not is_rewarding:
+                #     print("The trade is not rewarding based on risk/reward ratio. Not proceeding.")
+                #     time.sleep(wait_time)  # Wait for the specified amount of time
+                #     continue  # Skip to the next iteration
+                
+                # Dynamic Trade Allocation  >> size of trade changes on strong or weak trends accordingly.
+                bot_data['dynamic_trade_allocation'] = dynamic_trade_allocation(bot_data, short_ema, long_ema, atr)
 
-            # trailing stop/loss        >> lock in profits by dynamically updating the exit price as the trade moves in your favor.
-            stop_loss_triggered = trailing_stop_loss(bot_data, symbol, prices, atr)
-            print(f"stop_loss_triggered: {stop_loss_triggered}")
-            if stop_loss_triggered:
-                print("Trade exited due to trailing stop-loss.")
-                break
+                # trailing stop/loss        >> lock in profits by dynamically updating the exit price as the trade moves in your favor.
+                stop_loss_triggered = trailing_stop_loss(bot_data, symbol, prices, atr)
+                print(f"stop_loss_triggered: {stop_loss_triggered}")
+                if stop_loss_triggered:
+                    print("Trade exited due to trailing stop-loss.")
+                    break
             
             # Check EMA Thresholds      >> OG functionality + threshold amount
             ema_result = check_ema_threshold(bot_data, short_ema, long_ema)

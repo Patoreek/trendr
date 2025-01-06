@@ -13,6 +13,7 @@ bot_data = {
     "quote_currency": None,
     "interval": None,
     "trade_allocation": 0,
+    "dyamic_trade_allocation": 0,
     "trade_window": None,
     "start_trade_time": None,
     "end_trade_time": None,
@@ -24,6 +25,7 @@ bot_data = {
     "currency_quantity_precision": 0,
     "previous_market_price": Decimal('0.0'),
     "current_market_price": Decimal('0.0'),
+    "highest_market_price": Decimal('0.0'),
     "total_trades": 0,
     "successful_trades": 0,
     "failed_trades": 0,
@@ -43,6 +45,7 @@ bot_data = {
 }
 
 # Initialize Binance client
+
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY_TESTNET")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET_TESTNET")
 binance_client = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_API_SECRET, testnet=True)

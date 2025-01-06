@@ -47,17 +47,17 @@ def buy_crypto(symbol, bot_data):
         
         print(f'BUYING {bot_data["base_currency"]} WITH {bot_data["quote_currency"]}')
         bot_data["successful_trades"] += 1
+        bot_data["total_buys"] += 1
         bot_data["total_trades"] += 1
-        bot_data["daily_log"].append({
-            "action": "Buy",
-            "symbol": symbol,
-            "price": float(price),
-            "quantity": float(adjusted_quantity),
-            "value": float(total_cost),
-            "fee": float(fee),
-            "net_value": float(net_cost),
-            "timestamp": time.time(),
-        })
+        
+        # Market Log Data
+        bot_data["market_action"] = "Buy"
+        bot_data["market_price"] = float(price)
+        bot_data["market_quantity"] = float(adjusted_quantity)
+        bot_data["market_value"] = float(total_cost)
+        bot_data["market_fee"] = float(fee)
+        bot_data["market_net_value"] = float(net_cost)
+        bot_data["market_timestamp"] = time.time()
         
         return order
     except Exception as e:
@@ -101,18 +101,18 @@ def sell_crypto(symbol, bot_data):
 
         print(f'SELLING {bot_data["base_currency"]} FOR {bot_data["quote_currency"]}')
         bot_data["successful_trades"] += 1
+        bot_data["total_sells"] += 1
         bot_data["total_trades"] += 1
-
-        bot_data["daily_log"].append({
-            "action": "Sell",
-            "symbol": symbol,
-            "price": float(price),
-            "quantity": float(adjusted_quantity),
-            "value": float(trade_value),
-            "fee": float(fee),
-            "net_value": float(net_value),
-            "timestamp": time.time(),
-        })
+        # Market Log Data
+        bot_data["action"] = "Sell"
+        bot_data["symbol"] = symbol
+        bot_data["price"] = float(price)
+        bot_data["quantity"] = float(adjusted_quantity)
+        bot_data["value"] = float(trade_value)
+        bot_data["fee"] = float(fee)
+        bot_data["net_value"] = float(net_value)
+        bot_data["timestamp"] = time.time()
+            
         return order
         # return order
     except Exception as e:
@@ -184,6 +184,7 @@ def trading_loop(bot_name, bot_data):
                     hold_msg = "Holding: Market conditions do not allow a trade."
                     
                 action = "Hold"
+                bot_data["total_holds"] += 1
                 color = COLORS['error']
                 print(f"{color}{hold_msg}{COLORS['reset']}")
                 color = COLORS['hold']
